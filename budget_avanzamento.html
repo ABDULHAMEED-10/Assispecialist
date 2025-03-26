@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Budget e Avanzamento</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="assets/js/budget_avanzamento.js"></script>
+  </head>
+  <body>
+    <!-- Top Gradient Bar -->
+    <div class="top-gradient-bar"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <a href="index.html" class="navbar-brand">
+          <img
+            src="assets/images/logo_sub_agenti.png"
+            alt="AssiSpecialist Logo"
+          />
+        </a>
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a href="index.html" class="nav-link">Home</a>
+          </li>
+          <li class="nav-item">
+            <a href="inserisci_specialista.html" class="nav-link"
+              >Specialisti</a
+            >
+          </li>
+          <li class="nav-item">
+            <a href="carica_file.html" class="nav-link">Polizze</a>
+          </li>
+          <li class="nav-item">
+            <a href="budget_specialista.html" class="nav-link">Budget</a>
+          </li>
+          <li class="nav-item">
+            <a href="trattative.html" class="nav-link">Trattative</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header-wrapper">
+      <div class="page-header">
+        <a href="index.html" class="home-button">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span class="ml-2">Home</span>
+        </a>
+        <h1 class="page-title">Budget e Avanzamento</h1>
+      </div>
+    </div>
+
+    <main class="container">
+      <!-- Sezione Filtri -->
+      <div class="filters-container" id="filtri">
+        <div class="filter-group">
+          <label for="filtro-specialista">Filtro Specialista:</label>
+          <select id="filtro-specialista">
+            <option value="tutti">Tutti</option>
+            <!-- Le opzioni per il filtro specialista potranno essere popolate dinamicamente o staticamente -->
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtro-trimestre">Filtro Trimestre:</label>
+          <select id="filtro-trimestre">
+            <option value="tutti">Tutti</option>
+            <option value="gennaio-marzo">Gennaio - Marzo</option>
+            <option value="aprile-giugno">Aprile - Giugno</option>
+            <option value="luglio-settembre">Luglio - Settembre</option>
+            <option value="ottobre-dicembre">Ottobre - Dicembre</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Sezione Budget -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Budget</h2>
+        </div>
+        <div class="card-body">
+          <div id="riepilogo-budget-container">
+            <div class="d-flex justify-center align-center">
+              <div class="loader"></div>
+              <p id="loading-message" class="ml-3">
+                Caricamento del riepilogo in corso...
+              </p>
+            </div>
+            <!-- Le tabelle dei budget verranno inserite qui -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Sezione Campagne -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Campagne</h2>
+        </div>
+        <div class="card-body">
+          <div id="riepilogo-campagna-container">
+            <div class="d-flex justify-center align-center">
+              <div class="loader"></div>
+              <p id="loading-campagna-message" class="ml-3">
+                Caricamento delle campagne in corso...
+              </p>
+            </div>
+            <!-- Le tabelle delle campagne verranno inserite qui -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-container">
+        <div class="footer-logo">
+          <img src="assets/images/logo_sub_agenti.png" alt="Logo Sub Agenti" />
+          <p>
+            AssiSpecialist è la piattaforma completa per la gestione degli
+            specialisti assicurativi e il monitoraggio delle performance.
+          </p>
+        </div>
+
+        <div class="footer-links">
+          <div class="footer-links-column">
+            <h4 class="footer-links-title">Navigazione</h4>
+            <ul class="footer-links-list">
+              <li><a href="index.html">Home</a></li>
+              <li><a href="inserisci_specialista.html">Specialisti</a></li>
+              <li><a href="carica_file.html">Polizze</a></li>
+              <li><a href="produzione_budget.html">Produzione</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-links-column">
+            <h4 class="footer-links-title">Budget</h4>
+            <ul class="footer-links-list">
+              <li><a href="budget_specialista.html">Budget Specialista</a></li>
+              <li><a href="budget_avanzamento.html">Avanzamento Budget</a></li>
+              <li><a href="trattative.html">Trattative</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>
+          &copy; <span id="current-year"></span> AssiSpecialist. Tutti i diritti
+          riservati.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Set current year in footer
+      document.getElementById("current-year").textContent =
+        new Date().getFullYear();
+    </script>
+  </body>
+</html>

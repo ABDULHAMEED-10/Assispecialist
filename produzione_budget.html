@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Produzione e Budget</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="assets/js/produzione_budget.js"></script>
+  </head>
+  <body>
+    <!-- Top Gradient Bar -->
+    <div class="top-gradient-bar"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <a href="index.html" class="navbar-brand">
+          <img
+            src="assets/images/logo_sub_agenti.png"
+            alt="AssiSpecialist Logo"
+          />
+        </a>
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a href="index.html" class="nav-link">Home</a>
+          </li>
+          <li class="nav-item">
+            <a href="inserisci_specialista.html" class="nav-link"
+              >Specialisti</a
+            >
+          </li>
+          <li class="nav-item">
+            <a href="carica_file.html" class="nav-link">Polizze</a>
+          </li>
+          <li class="nav-item">
+            <a href="budget_specialista.html" class="nav-link">Budget</a>
+          </li>
+          <li class="nav-item">
+            <a href="trattative.html" class="nav-link">Trattative</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header-wrapper">
+      <div class="page-header">
+        <div class="d-flex gap-3">
+          <a href="index.html" class="home-button">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span class="ml-2">Home</span>
+          </a>
+          <a href="trattative.html" class="home-button">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+              ></path>
+            </svg>
+            <span class="ml-2">Inserisci Trattativa</span>
+          </a>
+        </div>
+        <h1 class="page-title">Produzione e Budget</h1>
+      </div>
+    </div>
+
+    <main class="container">
+      <!-- Filtri per la visualizzazione -->
+      <div class="filters-container">
+        <div class="filter-group">
+          <label for="filtro-specialista">Specialista:</label>
+          <select id="filtro-specialista">
+            <option value="tutti">Tutti gli Specialisti</option>
+            <!-- Le opzioni verranno aggiunte dinamicamente dallo script JavaScript -->
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtro-periodo">Periodo di Ricerca:</label>
+          <select id="filtro-periodo">
+            <option value="anno-intero">Anno Intero</option>
+            <option value="gennaio-marzo">Gennaio - Marzo</option>
+            <option value="aprile-giugno">Aprile - Giugno</option>
+            <option value="luglio-settembre">Luglio - Settembre</option>
+            <option value="ottobre-dicembre">Ottobre - Dicembre</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Contenitore per la lista delle polizze -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Lista Polizze</h2>
+        </div>
+        <div class="card-body">
+          <div id="polizze-list-container">
+            <!-- Le polizze verranno caricate qui -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-container">
+        <div class="footer-logo">
+          <img src="assets/images/logo_sub_agenti.png" alt="Logo Sub Agenti" />
+          <p>
+            AssiSpecialist è la piattaforma completa per la gestione degli
+            specialisti assicurativi e il monitoraggio delle performance.
+          </p>
+        </div>
+
+        <div class="footer-links">
+          <div class="footer-links-column">
+            <h4 class="footer-links-title">Navigazione</h4>
+            <ul class="footer-links-list">
+              <li><a href="index.html">Home</a></li>
+              <li><a href="inserisci_specialista.html">Specialisti</a></li>
+              <li><a href="carica_file.html">Polizze</a></li>
+              <li><a href="produzione_budget.html">Produzione</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-links-column">
+            <h4 class="footer-links-title">Budget</h4>
+            <ul class="footer-links-list">
+              <li><a href="budget_specialista.html">Budget Specialista</a></li>
+              <li><a href="budget_avanzamento.html">Avanzamento Budget</a></li>
+              <li><a href="trattative.html">Trattative</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>
+          &copy; <span id="current-year"></span> AssiSpecialist. Tutti i diritti
+          riservati.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Set current year in footer
+      document.getElementById("current-year").textContent =
+        new Date().getFullYear();
+    </script>
+  </body>
+</html>

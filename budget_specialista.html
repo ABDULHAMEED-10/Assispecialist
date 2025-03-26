@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Budget Specialista</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="assets/js/budget_specialista.js"></script>
+  </head>
+  <body>
+    <!-- Top Gradient Bar -->
+    <div class="top-gradient-bar"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <a href="index.html" class="navbar-brand">
+          <img
+            src="assets/images/logo_sub_agenti.png"
+            alt="AssiSpecialist Logo"
+          />
+        </a>
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a href="index.html" class="nav-link">Home</a>
+          </li>
+          <li class="nav-item">
+            <a href="inserisci_specialista.html" class="nav-link"
+              >Specialisti</a
+            >
+          </li>
+          <li class="nav-item">
+            <a href="carica_file.html" class="nav-link">Polizze</a>
+          </li>
+          <li class="nav-item">
+            <a href="budget_specialista.html" class="nav-link active">Budget</a>
+          </li>
+          <li class="nav-item">
+            <a href="trattative.html" class="nav-link">Trattative</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header-wrapper">
+      <div class="page-header">
+        <a href="index.html" class="home-button">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span class="ml-2">Home</span>
+        </a>
+        <h1 class="page-title">Budget Specialista</h1>
+      </div>
+    </div>
+
+    <main class="container">
+      <!-- Sezione Budget -->
+      <div class="budget-card">
+        <div class="budget-card-header">Budget Specialista</div>
+        <div class="budget-card-body">
+          <div class="d-flex justify-center mb-4">
+            <button id="inserisci-budget-btn" class="btn">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span class="ml-2">Inserisci Budget Specialista</span>
+            </button>
+          </div>
+
+          <div
+            id="selezione-specialista-container"
+            style="display: none"
+            class="form-group"
+          >
+            <label for="seleziona-specialista">Seleziona Specialista:</label>
+            <select id="seleziona-specialista">
+              <option value="">-- Seleziona uno specialista --</option>
+            </select>
+          </div>
+
+          <div id="form-budget-container" style="display: none">
+            <form id="budget-form">
+              <div id="form-campi-budget"></div>
+              <div class="d-flex justify-center mt-4">
+                <button type="submit" class="btn">Salva Budget</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="lista-budget-container" class="mt-4">
+            <h3 class="mb-3">Lista Budget</h3>
+            <div id="lista-budget">
+              <!-- Example budget item (will be replaced by dynamic content) -->
+              <div
+                class="budget-item"
+                style="
+                  padding: 1.25rem;
+                  border-radius: 0.5rem;
+                  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                  margin-bottom: 1rem;
+                  background: white;
+                "
+              >
+                <div class="budget-item-header">
+                  <div class="specialist-info">
+                    <div
+                      class="specialist-field"
+                      style="margin-bottom: 0.75rem"
+                    >
+                      <span class="specialist-label" style="font-weight: 600"
+                        >Specialista:</span
+                      >
+                      <span class="specialist-value"
+                        >VITTORIO PERRI (CIP: 181) - Family Welfare</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div class="budget-item-body" style="margin-bottom: 1rem">
+                  <div
+                    class="budget-item-row"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      padding: 0.25rem 0;
+                    "
+                  >
+                    <span class="budget-item-label" style="font-weight: 500"
+                      >RE:</span
+                    >
+                    <span class="budget-item-value">12,00 €</span>
+                  </div>
+                  <div
+                    class="budget-item-row"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      padding: 0.25rem 0;
+                    "
+                  >
+                    <span class="budget-item-label" style="font-weight: 500"
+                      >SALUTE:</span
+                    >
+                    <span class="budget-item-value">6.000,00 €</span>
+                  </div>
+                  <div
+                    class="budget-item-row"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      padding: 0.25rem 0;
+                    "
+                  >
+                    <span class="budget-item-label" style="font-weight: 500"
+                      >RISPARMIO:</span
+                    >
+                    <span class="budget-item-value">20.000,00 €</span>
+                  </div>
+                  <div
+                    class="budget-item-row"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      padding: 0.25rem 0;
+                    "
+                  >
+                    <span class="budget-item-label" style="font-weight: 500"
+                      >TCM:</span
+                    >
+                    <span class="budget-item-value">7.000,00 €</span>
+                  </div>
+                  <div
+                    class="budget-item-row"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      padding: 0.25rem 0;
+                    "
+                  >
+                    <span class="budget-item-label" style="font-weight: 500"
+                      >PREVIDENZA:</span
+                    >
+                    <span class="budget-item-value">11.000,00 €</span>
+                  </div>
+                </div>
+                <div
+                  class="budget-item-footer"
+                  style="display: flex; gap: 0.75rem; justify-content: flex-end"
+                >
+                  <button
+                    class="action-btn with-text action-btn-edit"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 0.5rem;
+                      padding: 0.5rem 1rem;
+                      border: none;
+                      border-radius: 0.25rem;
+                      background: #e2e8f0;
+                      color: #1e293b;
+                      cursor: pointer;
+                    "
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path
+                        d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                      ></path>
+                      <path
+                        d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                      ></path>
+                    </svg>
+                    <span>Modifica</span>
+                  </button>
+                  <button
+                    class="action-btn with-text action-btn-delete"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 0.5rem;
+                      padding: 0.5rem 1rem;
+                      border: none;
+                      border-radius: 0.25rem;
+                      background: #fee2e2;
+                      color: #b91c1c;
+                      cursor: pointer;
+                    "
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path
+                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                      ></path>
+                    </svg>
+                    <span>Elimina</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="mt-5 mb-5" />
+
+      <!-- Sezione Campagna -->
+      <div class="budget-card">
+        <div class="budget-card-header">Campagna Budget</div>
+        <div class="budget-card-body">
+          <div class="d-flex justify-center mb-4">
+            <button id="inserisci-campagna-btn" class="btn">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span class="ml-2">Inserisci CAMPAGNA</span>
+            </button>
+          </div>
+
+          <div
+            id="selezione-specialista-campagna-container"
+            style="display: none"
+            class="form-group"
+          >
+            <label for="seleziona-specialista-campagna"
+              >Seleziona Specialista:</label
+            >
+            <select id="seleziona-specialista-campagna">
+              <option value="">-- Seleziona uno specialista --</option>
+            </select>
+          </div>
+
+          <div id="campagna-form-container" style="display: none">
+            <form id="campagna-form">
+              <div id="campagna-campi-form"></div>
+              <div class="d-flex justify-center mt-4">
+                <button type="submit" class="btn">Salva Campagna</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="lista-campagna-container" class="mt-4">
+            <h3 class="mb-3">Lista Campagna</h3>
+            <div id="lista-campagna"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-container">
+        <div class="footer-logo">
+          <img src="assets/images/logo_sub_agenti.png" alt="Logo Sub Agenti" />
+          <p>
+            AssiSpecialist è la piattaforma completa per la gestione degli
+            specialisti assicurativi e il monitoraggio delle performance.
+          </p>
+        </div>
+
+        <div class="footer-links">
+          <div class="footer-links-column">
+            <h4 class="footer-links-title">Navigazione</h4>
+            <ul class="footer-links-list">
+              <li><a href="index.html">Home</a></li>
+              <li><a href="inserisci_specialista.html">Specialisti</a></li>
+              <li><a href="carica_file.html">Polizze</a></li>
+              <li><a href="produzione_budget.html">Produzione</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-links-column">
+            <h4 class="footer-links-title">Budget</h4>
+            <ul class="footer-links-list">
+              <li><a href="budget_specialista.html">Budget Specialista</a></li>
+              <li><a href="budget_avanzamento.html">Avanzamento Budget</a></li>
+              <li><a href="trattative.html">Trattative</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>
+          &copy; <span id="current-year"></span> AssiSpecialist. Tutti i diritti
+          riservati.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Set current year in footer
+      document.getElementById("current-year").textContent =
+        new Date().getFullYear();
+
+      // Pulsante "Inserisci Budget Specialista": mostra il menu per la selezione dello specialista
+      document
+        .getElementById("inserisci-budget-btn")
+        .addEventListener("click", () => {
+          document.getElementById(
+            "selezione-specialista-container"
+          ).style.display = "block";
+          document.getElementById("inserisci-budget-btn").style.display =
+            "none";
+        });
+    </script>
+  </body>
+</html>
