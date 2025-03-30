@@ -9,9 +9,17 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="assets/images/favicon-16x16.png"
+    />
     <!-- Add Firebase SDK -->
     <script type="module" src="firebase.js"></script>
+    <script type="module" src="assets/js/auth-handler.js"></script>
   </head>
+
   <body>
     <!-- Top Gradient Bar -->
     <div class="top-gradient-bar"></div>
@@ -20,10 +28,7 @@
     <nav class="navbar">
       <div class="navbar-container">
         <a href="index.html" class="navbar-brand">
-          <img
-            src="assets/images/logo_sub_agenti.png"
-            alt="AssiSpecialist Logo"
-          />
+          <img src="assets/images/logo.png" alt="AssiSpecialist Logo" />
         </a>
         <ul class="navbar-nav">
           <li class="nav-item">
@@ -43,10 +48,12 @@
           <li class="nav-item">
             <a href="trattative.html" class="nav-link">Trattative</a>
           </li>
+          <li class="nav-item" id="auth-nav-item">
+            <!-- This will be populated by JavaScript -->
+          </li>
         </ul>
       </div>
     </nav>
-
     <!-- Page Header -->
     <div class="page-header-wrapper">
       <div class="page-header">
@@ -228,7 +235,7 @@
     <footer>
       <div class="footer-container">
         <div class="footer-logo">
-          <img src="assets/images/logo_sub_agenti.png" alt="Logo Sub Agenti" />
+          <img src="assets/images/logo.png" alt="Logo Sub Agenti" />
           <p>
             AssiSpecialist è la piattaforma completa per la gestione degli
             specialisti assicurativi e il monitoraggio delle performance.

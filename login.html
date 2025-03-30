@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - AssiSpecialist</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link rel="stylesheet" href="assets/css/auth-styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="assets/js/auth.js"></script>
+  </head>
+  <body>
+    <!-- Top Gradient Bar -->
+    <div class="top-gradient-bar"></div>
+
+    <!-- Navbar (simplified for login page) -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <a href="index.html" class="navbar-brand">
+          <img src="assets/images/logo.png" alt="AssiSpecialist Logo" />
+        </a>
+      </div>
+    </nav>
+
+    <main class="container">
+      <div class="auth-container">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">Login</button>
+          <button class="auth-tab" data-tab="register">Registrati</button>
+          <button class="auth-tab" data-tab="reset">Password</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-form" class="auth-form active">
+          <h2>Accedi al tuo account</h2>
+          <form id="login-email-form">
+            <div class="form-group">
+              <label for="login-email">Email:</label>
+              <input
+                type="email"
+                id="login-email"
+                required
+                placeholder="Inserisci la tua email"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="login-password">Password:</label>
+              <input
+                type="password"
+                id="login-password"
+                required
+                placeholder="Inserisci la tua password"
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              <span class="ml-2">Accedi</span>
+            </button>
+
+            <div class="form-footer">
+              <a href="#" id="forgot-password-link">Password dimenticata?</a>
+            </div>
+          </form>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="auth-form">
+          <h2>Crea un nuovo account</h2>
+          <form id="register-email-form">
+            <div class="form-group">
+              <label for="register-email">Email:</label>
+              <input
+                type="email"
+                id="register-email"
+                required
+                placeholder="Inserisci la tua email"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="register-password">Password:</label>
+              <input
+                type="password"
+                id="register-password"
+                required
+                placeholder="Crea una password (min. 6 caratteri)"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="confirm-password">Conferma Password:</label>
+              <input
+                type="password"
+                id="confirm-password"
+                required
+                placeholder="Conferma la tua password"
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+              <span class="ml-2">Registrati</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Password Reset Form -->
+        <div id="reset-form" class="auth-form">
+          <h2>Recupera la tua password</h2>
+          <form id="reset-email-form">
+            <div class="form-group">
+              <label for="reset-email">Email:</label>
+              <input
+                type="email"
+                id="reset-email"
+                required
+                placeholder="Inserisci la tua email"
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                ></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <span class="ml-2">Invia email di reset</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-bottom">
+        <p>
+          &copy; <span id="current-year"></span> AssiSpecialist. Tutti i diritti
+          riservati.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Set current year in footer
+      document.getElementById("current-year").textContent =
+        new Date().getFullYear();
+    </script>
+  </body>
+</html>
