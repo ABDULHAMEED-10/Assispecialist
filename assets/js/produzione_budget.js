@@ -4,88 +4,111 @@ import {
   getDocs,
   query,
   where,
+  FieldPath,
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { formattaImporto, formattaData, CONSTANTS } from "./utils.js";
+
+const { SECTORS } = CONSTANTS;
 
 /* ==============================
-   Variabili e Filtri
+  Variabili e Filtri
 ============================== */
-// Elementi per i filtri (assicurati che gli id siano presenti nell'HTML)
 const polizzeContainer = document.getElementById("polizze-list-container");
 const filtroSpecialista = document.getElementById("filtro-specialista");
 const filtroPeriodo = document.getElementById("filtro-periodo");
 
-/* ==============================
-   Funzioni di utilità
-============================== */
-// Funzione per formattare un importo in euro
-function formattaImporto(importo) {
-  const valore = Number.parseFloat(importo);
-  return isNaN(valore)
-    ? "0.00 €"
-    : valore.toLocaleString("it-IT", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }) + " €";
+// Field name mapping with primary field as first element
+const FIELD_ALIASES = {
+  ramo: ["ramo", "branch", "branchname"],
+  data: ["dataCaricamento", "data", "date", "creationdate"],
+  importo: ["importo", "amount", "premium", "premio"],
+  specialista: ["specialista", "agent", "advisor", "consultant"],
+  cip: ["cip", "code", "agent_code"],
+  inAffiancamento: ["inAffiancamento", "affiancamento", "support", "assisted"],
+  comparto: ["comparto", "settore", "sector", "compartoProduttivo"],
+};
+
+/**
+ * Gets the primary field name for a given field type
+ */
+function getPrimaryField(fieldType) {
+  return FIELD_ALIASES[fieldType][0];
 }
 
-// Funzione per rimuovere separatori delle migliaia e convertire l'importo (se necessario)
-function pulisciImporto(importoStr) {
-  const importoPulito = importoStr.replace(/[.,]/g, (match) =>
-    match === "," ? "." : ""
-  );
-  return Number.parseFloat(importoPulito) || 0;
+/**
+ * Normalize field names by converting to lowercase and removing special chars
+ */
+function normalizeFieldName(fieldName) {
+  return fieldName.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-// Funzione per formattare la data
-function formattaData(data) {
-  // Se il valore passato è falsy, restituisce 'N/A'
-  if (!data) return "N/A";
+/**
+ * Gets a field value using alternative names (case-insensitive)
+ */
+function getFieldValue(data, fieldNames) {
+  if (!data) return null;
 
-  // Se la proprietà "data" non è presente, prova a usare "dataCaricamento"
-  if (typeof data === "object" && !data.toString().includes("/")) {
-    // Se è un oggetto, verifica se contiene la proprietà dataCaricamento
-    if (data.dataCaricamento) {
-      data = data.dataCaricamento;
+  // Create a normalized version of the data keys
+  const normalizedData = {};
+  Object.keys(data).forEach((key) => {
+    normalizedData[normalizeFieldName(key)] = data[key];
+  });
+
+  // Check each possible field name
+  for (const name of fieldNames) {
+    const normalizedFieldName = normalizeFieldName(name);
+    if (
+      normalizedData[normalizedFieldName] !== undefined &&
+      normalizedData[normalizedFieldName] !== null &&
+      normalizedData[normalizedFieldName] !== ""
+    ) {
+      return normalizedData[normalizedFieldName];
+    }
+  }
+  return null;
+}
+
+/**
+ * Determines the production sector (case-insensitive)
+ */
+function getProductionSector(data) {
+  if (!data) return null;
+
+  // First check explicit sector fields
+  const sectorValue = getFieldValue(data, FIELD_ALIASES.comparto);
+  if (sectorValue) return sectorValue;
+
+  // Then check for sector keywords in any field
+  const sectorKeywords = [
+    ...SECTORS.FAMILY_WELFARE,
+    ...SECTORS.BUSINESS_SPECIALIST,
+  ].map((k) => k.toLowerCase());
+
+  for (const [key, value] of Object.entries(data)) {
+    const strValue = String(value).toLowerCase();
+    if (sectorKeywords.some((k) => strValue.includes(k))) {
+      return key.toUpperCase();
     }
   }
 
-  let dateObj;
-
-  // Se data è un oggetto con il metodo toDate (ad es. Firebase Timestamp)
-  if (typeof data === "object" && typeof data.toDate === "function") {
-    dateObj = data.toDate();
-  }
-  // Se data è una stringa che contiene "/" (formato dd/mm/yyyy)
-  else if (typeof data === "string" && data.includes("/")) {
-    const [giorno, mese, anno] = data.split("/");
-    dateObj = new Date(`${anno}-${mese}-${giorno}`);
-  } else {
-    // Altrimenti, proviamo a creare una Date direttamente
-    dateObj = new Date(data);
-  }
-
-  if (isNaN(dateObj.getTime())) {
-    console.error("Formato data non valido:", data);
-    return "Formato data non valido";
-  }
-
-  const giorno = String(dateObj.getDate()).padStart(2, "0");
-  const mese = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const anno = dateObj.getFullYear();
-  return `${giorno}/${mese}/${anno}`;
+  return null;
 }
 
-// Funzione per caricare gli specialisti per il filtro
 async function caricaSpecialisti() {
   const specialisti = new Set();
   const querySnapshot = await getDocs(collection(db, "polizze"));
+
   querySnapshot.forEach((docSnap) => {
-    const specialista = docSnap.data().specialista;
-    if (specialista) {
-      specialisti.add(specialista);
-    }
+    const specialista = getFieldValue(
+      docSnap.data(),
+      FIELD_ALIASES.specialista
+    );
+    if (specialista) specialisti.add(specialista);
   });
-  specialisti.forEach((specialista) => {
+
+  filtroSpecialista.innerHTML =
+    '<option value="tutti">Tutti gli Specialisti</option>';
+  [...specialisti].sort().forEach((specialista) => {
     const option = document.createElement("option");
     option.value = specialista;
     option.textContent = specialista;
@@ -93,92 +116,163 @@ async function caricaSpecialisti() {
   });
 }
 
-/* ==============================
-   Visualizzazione della Lista delle Polizze
-============================== */
 async function visualizzaListaPolizze() {
-  try {
-    polizzeContainer.innerHTML = ""; // Resetta il contenuto del container
-    let q = collection(db, "polizze");
+  polizzeContainer.innerHTML = `
+   <div class="loading-container">
+     <div class="loader"></div>
+     <p>Caricamento polizze in corso...</p>
+   </div>
+ `;
 
-    // Applica il filtro per specialista se specificato
+  try {
+    let q = query(
+      collection(db, "polizze"),
+      orderBy(getPrimaryField("data"), "desc")
+    );
+
+    // Apply specialist filter if selected
     if (filtroSpecialista.value !== "tutti") {
-      q = query(q, where("specialista", "==", filtroSpecialista.value));
+      const specialistField = getPrimaryField("specialista");
+      q = query(q, where(specialistField, "==", filtroSpecialista.value));
     }
 
-    // Esegui la query per ottenere le polizze
+    // Apply period filter if selected
+    if (filtroPeriodo.value !== "anno-intero") {
+      const today = new Date();
+      let startDate, endDate;
+
+      switch (filtroPeriodo.value) {
+        case "gennaio-marzo":
+          startDate = new Date(today.getFullYear(), 0, 1);
+          endDate = new Date(today.getFullYear(), 2, 31);
+          break;
+        case "aprile-giugno":
+          startDate = new Date(today.getFullYear(), 3, 1);
+          endDate = new Date(today.getFullYear(), 5, 30);
+          break;
+        case "luglio-settembre":
+          startDate = new Date(today.getFullYear(), 6, 1);
+          endDate = new Date(today.getFullYear(), 8, 30);
+          break;
+        case "ottobre-dicembre":
+          startDate = new Date(today.getFullYear(), 9, 1);
+          endDate = new Date(today.getFullYear(), 11, 31);
+          break;
+      }
+
+      const dateField = getPrimaryField("data");
+      q = query(
+        q,
+        where(dateField, ">=", startDate),
+        where(dateField, "<=", endDate)
+      );
+    }
+
     const querySnapshot = await getDocs(q);
+    const validDocs = querySnapshot.docs.filter((doc) => {
+      const data = doc.data();
+      return Object.values(data).some(
+        (val) =>
+          val !== undefined && val !== null && val !== "" && val !== "N/A"
+      );
+    });
+
+    if (validDocs.length === 0) {
+      polizzeContainer.innerHTML = `
+       <div class="empty-state">
+         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+         </svg>
+         <p>Nessuna polizza trovata</p>
+       </div>
+     `;
+      return;
+    }
 
     const table = document.createElement("table");
     table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Ramo</th>
-          <th>Numero Polizza</th>
-          <th>Nome</th>
-          <th>Cognome</th>
-          <th>Data</th>
-          <th>Importo</th>
-          <th>Specialista</th>
-          <th>CIP</th>
-          <th>In Affiancamento</th>
-          <th>Comparto Produttivo</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    `;
+     <thead class="table-header">
+       <tr>
+         <th>Ramo</th>
+         <th>Data</th>
+         <th>Importo</th>
+         <th>Specialista</th>
+         <th>CIP</th>
+         <th>In Affiancamento</th>
+         <th>Comparto Produttivo</th>
+       </tr>
+     </thead>
+     <tbody></tbody>
+   `;
+
     const tbody = table.querySelector("tbody");
 
-    querySnapshot.forEach((docSnap) => {
+    validDocs.forEach((docSnap) => {
       const data = docSnap.data();
 
-      // Individua le chiavi per "cognome" e "comparto produttivo" ignorando eventuali spazi/maiuscole/minuscole
-      const cognomeKey = Object.keys(data).find(
-        (key) => key.trim().toLowerCase() === "cognome"
+      // Get all field values with fallbacks
+      const ramo = getFieldValue(data, FIELD_ALIASES.ramo);
+      const rawDate = getFieldValue(data, FIELD_ALIASES.data);
+      const dataFormattata = rawDate ? formattaData(rawDate) : "";
+      const importo = getFieldValue(data, FIELD_ALIASES.importo);
+      const specialista = getFieldValue(data, FIELD_ALIASES.specialista);
+      const cip = getFieldValue(data, FIELD_ALIASES.cip);
+      const inAffiancamento = getFieldValue(
+        data,
+        FIELD_ALIASES.inAffiancamento
       );
-      const cognome = cognomeKey ? data[cognomeKey] : "Cognome non disponibile";
-      const compartoProduttivoKey = Object.keys(data).find(
-        (key) => key.trim().toLowerCase() === "comparto produttivo"
-      );
-      const compartoProduttivo = compartoProduttivoKey
-        ? data[compartoProduttivoKey]
-        : "Comparto non disponibile";
+      const comparto = getProductionSector(data);
 
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${data.ramo || "N/A"}</td>
-        <td>${data["numero polizza"] || "N/A"}</td>
-        <td>${data.nome || "Nome non disponibile"}</td>
-        <td>${cognome}</td>
-        <td>${
-          data.dataCaricamento ? formattaData(data.dataCaricamento) : "N/A"
-        }</td>
-        <td>${
-          data.importo
-            ? formattaImporto(data.importo)
-            : "Importo non disponibile"
-        }</td>
-        <td>${data.specialista || "N/A"}</td>
-        <td>${data.cip || "N/A"}</td>
-        <td>${data["in affiancamento"] || "N/A"}</td>
-        <td>${compartoProduttivo}</td>
-      `;
-      tbody.appendChild(tr);
+      // Only show row if it has at least some data
+      if (ramo || importo || specialista) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+         <td>${ramo || "-"}</td>
+         <td>${dataFormattata || ""}</td>
+         <td>${importo ? formattaImporto(importo) : "-"}</td>
+         <td>${specialista || ""}</td>
+         <td>${cip || "-"}</td>
+         <td>${inAffiancamento === "SI" ? "Sì" : "No"}</td>
+         <td>${comparto || "N/D"}</td>
+       `;
+        tbody.appendChild(tr);
+      }
     });
 
-    polizzeContainer.appendChild(table);
+    polizzeContainer.innerHTML = "";
+    if (tbody.children.length > 0) {
+      polizzeContainer.appendChild(table);
+    } else {
+      polizzeContainer.innerHTML = `
+       <div class="empty-state">
+         <p>Nessuna polizza con dati validi trovata</p>
+       </div>
+     `;
+    }
   } catch (error) {
     console.error("Errore nel recuperare le polizze:", error);
-    polizzeContainer.innerHTML =
-      "<p>Errore nel recuperare le polizze. Riprova più tardi.</p>";
+    polizzeContainer.innerHTML = `
+     <div class="error-state">
+       <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <circle cx="12" cy="12" r="10"></circle>
+         <line x1="12" y1="8" x2="12" y2="12"></line>
+         <line x1="12" y1="16" x2="12.01" y2="16"></line>
+       </svg>
+       <p>Errore nel recuperare le polizze: ${error.message}</p>
+     </div>
+   `;
   }
 }
 
 /* ==============================
-   Inizializzazione della Pagina
+  Inizializzazione della Pagina
 ============================== */
-filtroSpecialista.addEventListener("change", visualizzaListaPolizze);
-filtroPeriodo.addEventListener("change", visualizzaListaPolizze);
+document.addEventListener("DOMContentLoaded", () => {
+  caricaSpecialisti();
+  visualizzaListaPolizze();
 
-caricaSpecialisti();
-visualizzaListaPolizze();
+  // Event listeners
+  filtroSpecialista.addEventListener("change", visualizzaListaPolizze);
+  filtroPeriodo.addEventListener("change", visualizzaListaPolizze);
+});

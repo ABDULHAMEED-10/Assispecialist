@@ -14,6 +14,10 @@ import {
   formattaData,
   excelSerialToJSDate,
   showNotification,
+  showLoadingState,
+  showEmptyState,
+  showErrorState,
+  CONSTANTS,
 } from "./utils.js";
 
 // DOM Elements
@@ -26,8 +30,7 @@ const fileNameDisplay = document.getElementById("file-name");
 const submitButton = form.querySelector('button[type="submit"]');
 
 // Constants
-const ALLOWED_FILE_TYPES = ["xlsx", "xls"];
-const MAX_FILE_SIZE_MB = 10; // 10MB max file size
+const { ALLOWED_FILE_TYPES, MAX_FILE_SIZE_MB } = CONSTANTS.FILE_TYPES;
 
 /**
  * Displays uploaded files in a styled table
@@ -39,35 +42,13 @@ async function displayUploadedFiles() {
   }
 
   // Show loading state
-  fileListContainer.innerHTML = `
-    <div class="loading-state">
-      <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="2" x2="12" y2="6"></line>
-        <line x1="12" y1="18" x2="12" y2="22"></line>
-        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-        <line x1="2" y1="12" x2="6" y2="12"></line>
-        <line x1="18" y1="12" x2="22" y2="12"></line>
-        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-      </svg>
-      <p>Caricamento file...</p>
-    </div>
-  `;
+  showLoadingState(fileListContainer);
 
   try {
     const querySnapshot = await getDocs(collection(db, "polizze"));
 
     if (querySnapshot.empty) {
-      fileListContainer.innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-          <p>Nessun file caricato</p>
-        </div>
-      `;
+      showEmptyState(fileListContainer, "Nessun file caricato");
       return;
     }
 
@@ -87,15 +68,7 @@ async function displayUploadedFiles() {
     });
 
     if (files.length === 0) {
-      fileListContainer.innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-          <p>Nessun file caricato</p>
-        </div>
-      `;
+      showEmptyState(fileListContainer, "Nessun file caricato");
       return;
     }
 
@@ -156,24 +129,7 @@ async function displayUploadedFiles() {
     `;
   } catch (error) {
     console.error("Error fetching files:", error);
-    fileListContainer.innerHTML = `
-      <div class="error-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p>Errore nel recupero dei file</p>
-        <button class="btn btn-sm mt-2" onclick="displayUploadedFiles()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-          <span class="ml-2">Riprova</span>
-        </button>
-      </div>
-    `;
+    showErrorState(fileListContainer, error);
     showNotification("Errore nel recupero dei file caricati", "error");
   }
 }

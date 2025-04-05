@@ -998,8 +998,15 @@ footer {
   align-items: center;
   justify-content: center;
   background-color: rgba(0, 0, 0, 0.5);
-  opacity: 0;
   transition: opacity 0.3s ease;
+}
+
+.dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .dialog-content {
@@ -1010,8 +1017,8 @@ footer {
   max-width: 400px;
   width: 90%;
   z-index: 2001;
+  position: relative;
   transition: transform 0.3s ease;
-  transform: scale(0.8);
 }
 
 .dialog-message {
@@ -1704,4 +1711,235 @@ footer {
     width: 100%;
     text-align: center;
   }
+}
+
+/* Additional styles from JS files */
+.file-input-container {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.file-input-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed var(--gray-400);
+  border-radius: var(--radius);
+  background-color: var(--gray-100);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.file-input-label:hover,
+.file-input-label.dragover {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+.file-input-label svg {
+  margin-bottom: 0.5rem;
+  color: var(--primary);
+}
+
+.file-input {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.file-name {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  display: none;
+}
+
+.file-name.active {
+  display: block;
+}
+
+/* Loading states */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.loading-container p {
+  margin-top: 1rem;
+  color: var(--gray-600);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--gray-600);
+}
+
+.empty-state svg {
+  margin-bottom: 1rem;
+  color: var(--gray-500);
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--danger);
+}
+
+.error-state svg {
+  margin-bottom: 1rem;
+}
+
+/* Form field styles */
+.form-field {
+  margin-bottom: 1rem;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  transition: var(--transition);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.budget-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  transition: var(--transition);
+}
+
+.budget-input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.budget-input.processing {
+  background-color: var(--primary-light);
+}
+
+/* Error button state */
+.error-btn {
+  background-color: var(--danger) !important;
+  color: var(--white) !important;
+}
+
+/* Progress display */
+.progress-container {
+  height: 0.5rem;
+  background-color: var(--gray-200);
+  border-radius: var(--radius);
+  margin: 1rem 0;
+  overflow: hidden;
+  display: none;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--primary);
+  border-radius: var(--radius);
+  width: 0;
+  transition: width 0.3s ease;
+}
+
+/* Add responsive table styles to ensure all data is visible */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+}
+
+.budget-table {
+  width: 100%;
+  min-width: 800px; /* Ensure minimum width for content */
+  margin-bottom: 1.5rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.budget-table th,
+.budget-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+.budget-table th {
+  background-color: var(--primary);
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.budget-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.budget-table tbody tr:nth-of-type(odd) {
+  background-color: var(--gray-50);
+}
+
+.budget-table tbody tr:hover {
+  background-color: var(--primary-light);
+}
+
+/* Ensure the specialist budget container has proper spacing */
+.specialista-budget {
+  margin-bottom: 2rem;
+  background-color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.specialista-budget h3 {
+  padding: 1rem 1.5rem;
+  margin: 0;
+  background-color: var(--gray-100);
+  border-bottom: 1px solid var(--gray-200);
 }

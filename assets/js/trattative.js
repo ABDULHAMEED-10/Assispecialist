@@ -7,6 +7,14 @@ import {
   deleteDoc,
   doc,
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import {
+  showConfirmationDialog,
+  showNotification,
+  showLoadingState,
+  showEmptyState,
+  showErrorState,
+  CONSTANTS,
+} from "./utils.js";
 
 // DOM Elements
 const form = document.getElementById("trattativa-form");
@@ -22,59 +30,7 @@ const formContainer = document.getElementById("trattativa-form-container");
 let currentDocId = null;
 
 // Constants
-const NEGOTIATION_STATES = {
-  IN_PROGRESS: "In Lavorazione",
-  CONCLUDED: "Conclusa",
-};
-
-/**
- * Shows a custom confirmation dialog
- * @param {string} message
- * @param {string} confirmText
- * @param {string} cancelText
- * @returns {Promise<boolean>}
- */
-function showConfirmationDialog(
-  message,
-  confirmText = "Conferma",
-  cancelText = "Annulla"
-) {
-  return new Promise((resolve) => {
-    const dialog = document.createElement("div");
-    dialog.className = "confirmation-dialog";
-    dialog.innerHTML = `
-      <div class="dialog-overlay"></div>
-      <div class="dialog-content">
-        <div class="dialog-message">${message}</div>
-        <div class="dialog-actions">
-          <button class="dialog-btn dialog-cancel">${cancelText}</button>
-          <button class="dialog-btn dialog-confirm">${confirmText}</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(dialog);
-    document.body.style.overflow = "hidden";
-
-    const confirmBtn = dialog.querySelector(".dialog-confirm");
-    const cancelBtn = dialog.querySelector(".dialog-cancel");
-
-    const cleanup = () => {
-      document.body.style.overflow = "";
-      dialog.remove();
-    };
-
-    confirmBtn.addEventListener("click", () => {
-      cleanup();
-      resolve(true);
-    });
-
-    cancelBtn.addEventListener("click", () => {
-      cleanup();
-      resolve(false);
-    });
-  });
-}
+const { NEGOTIATION_STATES, QUARTERS } = CONSTANTS;
 
 /**
  * Formats a date to dd/mm/yyyy format
@@ -87,55 +43,6 @@ function formatDate(dateInput) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
-}
-
-/**
- * Shows a notification to the user
- * @param {string} message
- * @param {string} type - 'success' or 'error'
- */
-function showNotification(message, type) {
-  const notification = document.createElement("div");
-  notification.className = `notification ${type}`;
-  notification.innerHTML = `
-    <div class="notification-content">
-      <div class="notification-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          ${
-            type === "success"
-              ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>'
-              : '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>'
-          }
-        </svg>
-      </div>
-      <div class="notification-message">${message}</div>
-    </div>
-    <button class="notification-close">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </button>
-  `;
-
-  document.body.appendChild(notification);
-
-  // Add event listener for close button
-  const closeBtn = notification.querySelector(".notification-close");
-  closeBtn.addEventListener("click", () => {
-    notification.classList.add("notification-hide");
-    setTimeout(() => {
-      notification.remove();
-    }, 300);
-  });
-
-  // Auto-remove notification after 5 seconds
-  setTimeout(() => {
-    notification.classList.add("notification-hide");
-    setTimeout(() => {
-      notification.remove();
-    }, 300);
-  }, 5000);
 }
 
 /**
@@ -251,34 +158,12 @@ function resetForm() {
 async function loadNegotiations() {
   try {
     // Show loading state
-    elencoTrattative.innerHTML = `
-      <div class="loading-state">
-        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="2" x2="12" y2="6"></line>
-          <line x1="12" y1="18" x2="12" y2="22"></line>
-          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-          <line x1="2" y1="12" x2="6" y2="12"></line>
-          <line x1="18" y1="12" x2="22" y2="12"></line>
-          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-        </svg>
-        <p>Caricamento trattative in corso...</p>
-      </div>
-    `;
+    showLoadingState(elencoTrattative);
 
     const querySnapshot = await getDocs(collection(db, "trattative"));
 
     if (querySnapshot.empty) {
-      elencoTrattative.innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-          <p>Nessuna trattativa disponibile</p>
-        </div>
-      `;
+      showEmptyState(elencoTrattative, "Nessuna trattativa disponibile");
       loadSpecialistStatistics();
       return;
     }
@@ -444,14 +329,10 @@ async function loadNegotiations() {
     }
 
     if (!hasFilteredResults) {
-      elencoTrattative.innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-          <p>Nessuna trattativa corrisponde ai filtri impostati</p>
-        </div>
-      `;
+      showEmptyState(
+        elencoTrattative,
+        "Nessuna trattativa corrisponde ai filtri impostati"
+      );
     } else {
       elencoTrattative.innerHTML = "";
       elencoTrattative.appendChild(table);
@@ -460,24 +341,7 @@ async function loadNegotiations() {
     loadSpecialistStatistics();
   } catch (error) {
     console.error("Error loading negotiations:", error);
-    elencoTrattative.innerHTML = `
-      <div class="error-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p>Errore nel caricamento delle trattative</p>
-        <button class="btn btn-sm mt-2" onclick="loadNegotiations()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-          <span class="ml-2">Riprova</span>
-        </button>
-      </div>
-    `;
+    showErrorState(elencoTrattative, error);
   }
 }
 
@@ -618,14 +482,7 @@ async function loadSpecialistStatistics() {
     const statsBody = statsContainer.querySelector(".budget-card-body");
 
     if (Object.keys(stats).length === 0) {
-      statsBody.innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-          <p>Nessuna statistica disponibile</p>
-        </div>
-      `;
+      showEmptyState(statsBody, "Nessuna statistica disponibile");
       return;
     }
 
@@ -676,197 +533,6 @@ async function loadSpecialistStatistics() {
     console.error("Error loading statistics:", error);
   }
 }
-
-// Add the notification and dialog styles to the document head
-const style = document.createElement("style");
-style.textContent = `
-  /* Notification styles */
-  .notification {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    padding: 1.25rem;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    max-width: 350px;
-    z-index: 1000;
-    animation: slideIn 0.3s ease-out forwards;
-    background-color: white;
-    border-left: 5px solid var(--primary);
-  }
-  
-  .notification-content {
-    display: flex;
-    align-items: flex-start;
-  }
-  
-  .notification-icon {
-    margin-right: 1rem;
-    display: flex;
-    align-items: center;
-  }
-  
-  .notification-message {
-    flex: 1;
-    font-weight: 500;
-  }
-  
-  .notification-close {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-  }
-  
-  .notification-close:hover {
-    opacity: 1;
-  }
-  
-  .notification.success {
-    border-color: var(--success);
-  }
-  
-  .notification.success .notification-icon {
-    color: var(--success);
-  }
-  
-  .notification.error {
-    border-color: var(--danger);
-  }
-  
-  .notification.error .notification-icon {
-    color: var(--danger);
-  }
-  
-  .notification-hide {
-    animation: slideOut 0.3s ease-in forwards;
-  }
-
-  /* Confirmation dialog styles */
-  .confirmation-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .dialog-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-  }
-
-  .dialog-content {
-    position: relative;
-    background-color: white;
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    max-width: 400px;
-    width: 90%;
-    z-index: 2001;
-  }
-
-  .dialog-message {
-    margin-bottom: 1.5rem;
-    font-size: 1.1rem;
-    line-height: 1.5;
-  }
-
-  .dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-  }
-
-  .dialog-btn {
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
-  }
-
-  .dialog-cancel {
-    background-color: var(--gray-100);
-    color: var(--gray-800);
-    border: 1px solid var(--gray-300);
-  }
-
-  .dialog-cancel:hover {
-    background-color: var(--gray-200);
-  }
-
-  .dialog-confirm {
-    background-color: var(--danger);
-    color: white;
-    border: 1px solid var(--danger);
-  }
-
-  .dialog-confirm:hover {
-    background-color: var(--danger-dark);
-  }
-
-  /* Other utility styles */
-  .success-btn {
-    background-color: var(--success) !important;
-  }
-  
-  .error-btn {
-    background-color: var(--danger) !important;
-  }
-
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideOut {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-  }
-
-  .ml-2 {
-    margin-left: 0.5rem;
-  }
-`;
-document.head.appendChild(style);
 
 // Event Listeners
 mostraFormBtn.addEventListener("click", () => {

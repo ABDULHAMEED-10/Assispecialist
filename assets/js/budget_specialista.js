@@ -8,130 +8,17 @@ import {
   doc,
   getDoc,
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import {
+  showConfirmationDialog,
+  showNotification,
+  formattaImporto,
+  showLoadingState,
+  showEmptyState,
+  showErrorState,
+  CONSTANTS,
+} from "./utils.js";
 
-/* ============================
-  FUNZIONI DI UTILITÀ
-=============================== */
-
-function showConfirmationDialog(
-  message,
-  confirmText = "Conferma",
-  cancelText = "Annulla"
-) {
-  return new Promise((resolve) => {
-    const dialog = document.createElement("div");
-    dialog.className = "confirmation-dialog";
-    dialog.innerHTML = `
-      <div class="dialog-overlay"></div>
-      <div class="dialog-content">
-        <div class="dialog-message">${message}</div>
-        <div class="dialog-actions">
-          <button class="dialog-btn dialog-cancel">${cancelText}</button>
-          <button class="dialog-btn dialog-confirm">${confirmText}</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(dialog);
-    document.body.style.overflow = "hidden";
-
-    const confirmBtn = dialog.querySelector(".dialog-confirm");
-    const cancelBtn = dialog.querySelector(".dialog-cancel");
-
-    const cleanup = () => {
-      document.body.style.overflow = "";
-      dialog.remove();
-    };
-
-    confirmBtn.addEventListener("click", () => {
-      cleanup();
-      resolve(true);
-    });
-
-    cancelBtn.addEventListener("click", () => {
-      cleanup();
-      resolve(false);
-    });
-  });
-}
-
-function showNotification(message, type) {
-  const notification = document.createElement("div");
-  notification.className = `notification ${type}`;
-  notification.innerHTML = `
-    <div class="notification-content">
-      <div class="notification-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          ${
-            type === "success"
-              ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>'
-              : '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>'
-          }
-        </svg>
-      </div>
-      <div class="notification-message">${message}</div>
-    </div>
-    <button class="notification-close">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </button>
-  `;
-
-  document.body.appendChild(notification);
-
-  const closeBtn = notification.querySelector(".notification-close");
-  closeBtn.addEventListener("click", () => {
-    notification.classList.add("notification-hide");
-    setTimeout(() => {
-      notification.remove();
-    }, 300);
-  });
-
-  setTimeout(() => {
-    notification.classList.add("notification-hide");
-    setTimeout(() => {
-      notification.remove();
-    }, 300);
-  }, 5000);
-}
-
-function formattaImporto(importo) {
-  const valore = Number.parseFloat(importo);
-  return isNaN(valore)
-    ? "0.00 €"
-    : valore.toLocaleString("it-IT", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }) + " €";
-}
-
-function calcolaAvanzamento(importo, budgetAnnuale) {
-  if (!budgetAnnuale || budgetAnnuale === 0) {
-    return {
-      mensile: "N/A (0.00 €)",
-      trimestrale: "N/A (0.00 €)",
-      annuale: "N/A (0.00 €)",
-    };
-  }
-  const avanzamentoMensile = (importo / (budgetAnnuale / 12)) * 100;
-  const avanzamentoTrimestrale = (importo / (budgetAnnuale / 4)) * 100;
-  const avanzamentoAnnuale = (importo / budgetAnnuale) * 100;
-  return {
-    mensile: `${avanzamentoMensile.toFixed(2)}% (${formattaImporto(
-      importo / 12
-    )})`,
-    trimestrale: `${avanzamentoTrimestrale.toFixed(2)}% (${formattaImporto(
-      importo / 4
-    )})`,
-    annuale: `${avanzamentoAnnuale.toFixed(2)}% (${formattaImporto(importo)})`,
-  };
-}
-
-function normalizeComparto(comparto) {
-  return comparto.trim().toUpperCase();
-}
+const { SECTORS } = CONSTANTS;
 
 /* ============================
   SEZIONE BUDGET
@@ -163,11 +50,6 @@ async function caricaSpecialisti() {
       option.dataset.cip = specialista.cip;
       selezionaSpecialista.appendChild(option);
     });
-
-    selezionaSpecialista.classList.add("loaded");
-    setTimeout(() => {
-      selezionaSpecialista.classList.remove("loaded");
-    }, 500);
   } catch (error) {
     console.error("Errore nel caricamento degli specialisti:", error);
     selezionaSpecialista.innerHTML =
@@ -183,54 +65,37 @@ selezionaSpecialista.addEventListener("change", () => {
 
   if (ruolo) {
     formBudgetContainer.style.display = "block";
-    formBudgetContainer.style.opacity = "0";
-    formBudgetContainer.style.transform = "translateY(-20px)";
-    setTimeout(() => {
-      formBudgetContainer.style.opacity = "1";
-      formBudgetContainer.style.transform = "translateY(0)";
-    }, 10);
-
     formCampiBudget.innerHTML = "";
-    let campi = [];
-    if (ruolo === "Family Welfare") {
-      campi = ["RE", "SALUTE", "RISPARMIO", "TCM", "PREVIDENZA"];
-    } else if (ruolo === "Business Specialist") {
-      campi = ["AZIENDE", "SALUTE PMI", "PIATTAFORME WELLBE"];
-    }
 
-    campi.forEach((campo, index) => {
+    // Get sectors based on role
+    const settori =
+      ruolo === "Family Welfare"
+        ? SECTORS.FAMILY_WELFARE
+        : SECTORS.BUSINESS_SPECIALIST;
+
+    // Create form fields
+    settori.forEach((settore, index) => {
       const divCampo = document.createElement("div");
       divCampo.className = "form-field";
-      divCampo.style.opacity = "0";
-      divCampo.style.transform = "translateX(-10px)";
 
       const label = document.createElement("label");
       const input = document.createElement("input");
-      label.htmlFor = campo;
-      label.textContent = `${campo}: ${
-        campo === "PIATTAFORME WELLBE" ? "(pezzi)" : "(€)"
+      label.htmlFor = settore;
+      label.textContent = `${settore}: ${
+        settore === "PIATTAFORME WELLBE" ? "(pezzi)" : "(€)"
       }`;
       input.type = "number";
-      input.id = campo;
+      input.id = settore;
       input.required = true;
       input.className = "budget-input";
-      input.placeholder = `Inserisci budget per ${campo}`;
+      input.placeholder = `Budget per ${settore}`;
 
       divCampo.appendChild(label);
       divCampo.appendChild(input);
       formCampiBudget.appendChild(divCampo);
-
-      setTimeout(() => {
-        divCampo.style.opacity = "1";
-        divCampo.style.transform = "translateX(0)";
-      }, 50 * index);
     });
   } else {
-    formBudgetContainer.style.opacity = "0";
-    formBudgetContainer.style.transform = "translateY(-20px)";
-    setTimeout(() => {
-      formBudgetContainer.style.display = "none";
-    }, 300);
+    formBudgetContainer.style.display = "none";
   }
 });
 
@@ -353,27 +218,17 @@ budgetForm.addEventListener("submit", async (e) => {
 });
 
 async function caricaBudget() {
-  listaBudgetDiv.innerHTML = `
-    <div class="loading-container">
-      <div class="loader"></div>
-      <p>Caricamento budget in corso...</p>
-    </div>
-  `;
+  showLoadingState(listaBudgetDiv);
 
   try {
     const querySnapshot = await getDocs(collection(db, "budget"));
     listaBudgetDiv.innerHTML = "";
 
     if (querySnapshot.empty) {
-      listaBudgetDiv.innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-          </svg>
-          <p>Nessun budget disponibile. Aggiungi il tuo primo budget!</p>
-        </div>
-      `;
+      showEmptyState(
+        listaBudgetDiv,
+        "Nessun budget disponibile. Aggiungi il tuo primo budget!"
+      );
       return;
     }
 
@@ -497,16 +352,7 @@ async function caricaBudget() {
     }
   } catch (error) {
     console.error("Errore nel caricamento dei budget:", error);
-    listaBudgetDiv.innerHTML = `
-      <div class="error-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p>Errore nel caricamento dei budget: ${error.message}</p>
-      </div>
-    `;
+    showErrorState(listaBudgetDiv, error);
   }
 }
 
@@ -932,27 +778,17 @@ campagnaForm.addEventListener("submit", async (e) => {
 });
 
 async function caricaCampagna() {
-  listaCampagnaDiv.innerHTML = `
-    <div class="loading-container">
-      <div class="loader"></div>
-      <p>Caricamento campagne in corso...</p>
-    </div>
-  `;
+  showLoadingState(listaCampagnaDiv);
 
   try {
     const querySnapshot = await getDocs(collection(db, "campagna"));
     listaCampagnaDiv.innerHTML = "";
 
     if (querySnapshot.empty) {
-      listaCampagnaDiv.innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-          </svg>
-          <p>Nessuna campagna disponibile. Aggiungi la tua prima campagna!</p>
-        </div>
-      `;
+      showEmptyState(
+        listaCampagnaDiv,
+        "Nessuna campagna disponibile. Aggiungi la tua prima campagna!"
+      );
       return;
     }
 
@@ -1075,16 +911,7 @@ async function caricaCampagna() {
     }
   } catch (error) {
     console.error("Errore nel caricamento delle campagne:", error);
-    listaCampagnaDiv.innerHTML = `
-      <div class="error-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p>Errore nel caricamento delle campagne: ${error.message}</p>
-      </div>
-    `;
+    showErrorState(listaCampagnaDiv, error);
   }
 }
 
@@ -1137,380 +964,6 @@ function modificaCampagna(docId, campagnaData) {
 }
 
 /* ============================
-  STILI CSS
-=============================== */
-
-const style = document.createElement("style");
-style.textContent = `
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  @keyframes fadeOut {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(10px); }
-  }
-  
-  .budget-item {
-    transition: all 0.3s ease;
-  }
-  
-  .budget-input {
-    transition: all 0.3s ease;
-  }
-  
-  .budget-input.processing {
-    background-color: var(--primary-light);
-    border-color: var(--primary);
-  }
-  
-  .form-field {
-    margin-bottom: 1rem;
-    transition: all 0.3s ease;
-  }
-  
-  .success-btn {
-    background-color: var(--success) !important;
-  }
-  
-  .error-btn {
-    background-color: var(--danger) !important;
-  }
-  
-  .notification {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    padding: 1.25rem;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    max-width: 350px;
-    z-index: 1000;
-    animation: slideIn 0.3s ease-out forwards;
-    background-color: white;
-    border-left: 5px solid var(--primary);
-  }
-  
-  .notification-content {
-    display: flex;
-    align-items: flex-start;
-  }
-  
-  .notification-icon {
-    margin-right: 1rem;
-    display: flex;
-    align-items: center;
-  }
-  
-  .notification-message {
-    flex: 1;
-    font-weight: 500;
-  }
-  
-  .notification-close {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-  }
-  
-  .notification-close:hover {
-    opacity: 1;
-  }
-  
-  .notification.success {
-    border-color: var(--success);
-  }
-  
-  .notification.success .notification-icon {
-    color: var(--success);
-  }
-  
-  .notification.error {
-    border-color: var(--danger);
-  }
-  
-  .notification.error .notification-icon {
-    color: var(--danger);
-  }
-  
-  .notification-hide {
-    animation: slideOut 0.3s ease-in forwards;
-  }
-  
-  @keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  
-  @keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-  }
-  
-  .loaded {
-    animation: flash 0.5s ease-out;
-  }
-  
-  @keyframes flash {
-    0%, 100% { background-color: transparent; }
-    50% { background-color: var(--primary-light); }
-  }
-  
-  .loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem;
-    text-align: center;
-  }
-  
-  .loader {
-    border: 3px solid var(--gray-200);
-    border-radius: 50%;
-    border-top: 3px solid var(--primary);
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin-bottom: 1rem;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  .empty-state, .error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem;
-    text-align: center;
-  }
-  
-  .empty-state svg, .error-state svg {
-    margin-bottom: 1rem;
-    color: var(--gray-400);
-  }
-  
-  .error-state svg {
-    color: var(--danger);
-  }
-  
-  .budget-item-header {
-    padding: 1rem 1.25rem;
-    background-color: #f3f4f6;
-    border-bottom: 1px solid #e5e7eb;
-    font-weight: 600;
-  }
-  
-  .budget-item-body {
-    padding: 1rem 1.25rem;
-  }
-  
-  .budget-item-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f3f4f6;
-  }
-  
-  .budget-item-row:last-child {
-    border-bottom: none;
-  }
-  
-  .budget-item-label {
-    font-weight: 500;
-    color: var(--primary);
-  }
-  
-  .budget-item-value {
-    font-weight: 600;
-  }
-  
-  .budget-item-footer {
-    padding: 0.75rem 1.25rem;
-    background-color: #f9fafb;
-    border-top: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-  }
-  
-  .action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-  
-  .action-btn.with-text {
-    padding: 0.5rem 0.75rem;
-  }
-  
-  .action-btn svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-  
-  .action-btn.with-text svg {
-    margin-right: 0.375rem;
-  }
-  
-  .action-btn-edit {
-    background-color: #f59e0b;
-    color: white;
-  }
-  
-  .action-btn-edit:hover {
-    background-color: #d97706;
-    transform: translateY(-2px);
-  }
-  
-  .action-btn-delete {
-    background-color: #ef4444;
-    color: white;
-  }
-  
-  .action-btn-delete:hover {
-    background-color: #dc2626;
-    transform: translateY(-2px);
-  }
-  
-  .specialist-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.5rem;
-  }
-  
-  .specialist-field {
-    display: flex;
-    align-items: center;
-  }
-  
-  .specialist-label {
-    font-weight: 600;
-    color: var(--gray-600);
-    margin-right: 0.5rem;
-  }
-  
-  .specialist-value {
-    color: var(--gray-900);
-    font-weight: 500;
-  }
-
-  /* Confirmation dialog styles */
-  .confirmation-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .dialog-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-  }
-
-  .dialog-content {
-    position: relative;
-    background-color: white;
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    max-width: 400px;
-    width: 90%;
-    z-index: 2001;
-  }
-
-  .dialog-message {
-    margin-bottom: 1.5rem;
-    font-size: 1.1rem;
-    line-height: 1.5;
-  }
-
-  .dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-  }
-
-  .dialog-btn {
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
-  }
-
-  .dialog-cancel {
-    background-color: var(--gray-100);
-    color: var(--gray-800);
-    border: 1px solid var(--gray-300);
-  }
-
-  .dialog-cancel:hover {
-    background-color: var(--gray-200);
-  }
-
-  .dialog-confirm {
-    background-color: var(--danger);
-    color: white;
-    border: 1px solid var(--danger);
-  }
-
-  .dialog-confirm:hover {
-    background-color: var(--danger-dark);
-  }
-
-  .ml-2 {
-    margin-left: 0.5rem;
-  }
-  
-  @media (max-width: 768px) {
-    .budget-item-row {
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    
-    .budget-item-footer {
-      flex-wrap: wrap;
-    }
-    
-    .specialist-info {
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-  }
-`;
-document.head.appendChild(style);
-
-/* ============================
   INIZIALIZZAZIONE
 =============================== */
 
@@ -1518,16 +971,6 @@ document.addEventListener("DOMContentLoaded", () => {
   caricaSpecialisti();
   caricaBudget();
   caricaCampagna();
-
-  document.addEventListener("click", (e) => {
-    if (e.target.closest(".notification-close")) {
-      const notification = e.target.closest(".notification");
-      notification.classList.add("notification-hide");
-      setTimeout(() => {
-        notification.remove();
-      }, 300);
-    }
-  });
 
   if (document.getElementById("current-year")) {
     document.getElementById("current-year").textContent =

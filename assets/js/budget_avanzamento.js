@@ -5,410 +5,338 @@ import {
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import {
+  formattaImporto,
+  normalizeComparto,
+  calcolaAvanzamento,
+  showLoadingState,
+  showEmptyState,
+  showErrorState,
+  CONSTANTS,
+  showNotification,
+} from "./utils.js";
 
-/* ==============================
-   Variabili e Filtri
-============================== */
-// Elementi per i filtri (assicurati che gli id siano presenti nell'HTML)
-const filtroSpecialista = document.getElementById("filtro-specialista");
-const filtroTrimestre = document.getElementById("filtro-trimestre");
+const { MONTHS, QUARTERS, SECTORS } = CONSTANTS;
 
-/* ==============================
-   Funzioni di utilità
-============================== */
-// Formatta un importo in euro
-function formattaImporto(importo) {
-  const valore = Number.parseFloat(importo);
-  return isNaN(valore)
-    ? "0.00 €"
-    : valore.toLocaleString("it-IT", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }) + " €";
+const elements = {
+  specialistFilter: document.getElementById("filtro-specialista"),
+  quarterFilter: document.getElementById("filtro-trimestre"),
+  monthFilter: document.getElementById("filtro-mese"),
+  budgetContainer: document.getElementById("riepilogo-budget-container"),
+  campaignContainer: document.getElementById("riepilogo-campagna-container"),
+};
+
+async function fetchSpecialists() {
+  const snapshot = await getDocs(collection(db, "specialisti"));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
-// Calcola l'avanzamento percentuale (mensile, trimestrale, annuale) rispetto al budget assegnato
-function calcolaAvanzamento(importo, budgetAnnuale) {
-  if (!budgetAnnuale || budgetAnnuale === 0) {
-    return {
-      mensile: "N/A (0.00 €)",
-      trimestrale: "N/A (0.00 €)",
-      annuale: "N/A (0.00 €)",
-    };
+async function fetchBudgets() {
+  const snapshot = await getDocs(collection(db, "budget"));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+async function fetchCampaigns() {
+  const snapshot = await getDocs(collection(db, "campagna"));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+async function fetchPolicies(specialistCIP, filters = {}) {
+  const q = query(
+    collection(db, "polizze"),
+    where("specialista", "==", Number(specialistCIP))
+  );
+
+  const snapshot = await getDocs(q);
+  let policies = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+  if (filters.quarter && filters.quarter !== "tutti") {
+    policies = policies.filter((doc) =>
+      QUARTERS[filters.quarter].includes(new Date(doc.data).getMonth())
+    );
   }
-  const avanzamentoMensile = (importo / (budgetAnnuale / 12)) * 100;
-  const avanzamentoTrimestrale = (importo / (budgetAnnuale / 4)) * 100;
-  const avanzamentoAnnuale = (importo / budgetAnnuale) * 100;
-  return {
-    mensile: `${avanzamentoMensile.toFixed(2)}% (${formattaImporto(
-      importo / 12
-    )})`,
-    trimestrale: `${avanzamentoTrimestrale.toFixed(2)}% (${formattaImporto(
-      importo / 4
-    )})`,
-    annuale: `${avanzamentoAnnuale.toFixed(2)}% (${formattaImporto(importo)})`,
-  };
-}
 
-// Normalizza il nome di un comparto: rimuove spazi e converte in maiuscolo
-function normalizeComparto(comparto) {
-  return comparto.trim().toUpperCase();
-}
-
-// Verifica se una polizza (basata sul campo "data") rientra nel trimestre selezionato
-function isPolizzaInTrimestre(doc, trimestre) {
-  const dataStr = doc.data().data; // Si assume che ogni polizza abbia il campo "data" in formato ISO
-  if (!dataStr) return true; // Se non c'è data, includi la polizza
-  const date = new Date(dataStr);
-  const month = date.getMonth(); // 0 = gennaio, 11 = dicembre
-  switch (trimestre) {
-    case "gennaio-marzo":
-      return month >= 0 && month <= 2;
-    case "aprile-giugno":
-      return month >= 3 && month <= 5;
-    case "luglio-settembre":
-      return month >= 6 && month <= 8;
-    case "ottobre-dicembre":
-      return month >= 9 && month <= 11;
-    default:
-      return true;
+  if (filters.month && filters.month !== "tutti") {
+    policies = policies.filter(
+      (doc) => new Date(doc.data).getMonth() === Number.parseInt(filters.month)
+    );
   }
+
+  return policies;
 }
 
-/* ==============================
-   Sezione Budget e Avanzamento
-============================== */
-
-// Elementi del DOM per la sezione Budget
-const budgetContainer = document.getElementById("riepilogo-budget-container");
-const loadingMessage = document.getElementById("loading-message");
-
-// Visualizza i dati dei budget (filtrati per specialista e trimestre)
-async function visualizzaBudgetConAvanzamento() {
-  if (!budgetContainer) {
-    console.error("Elemento 'riepilogo-budget-container' non trovato.");
-    return;
-  }
-  loadingMessage.style.display = "block";
-  // Aggiungiamo il titolo "BUDGET"
-  budgetContainer.innerHTML = "<h2>BUDGET</h2>";
-  let specialistaRowContainer = document.createElement("div");
-  specialistaRowContainer.classList.add("specialista-row-container");
-  let count = 0;
+async function initFilters() {
   try {
-    const budgetSnapshot = await getDocs(collection(db, "budget"));
-    if (budgetSnapshot.empty) {
-      budgetContainer.innerHTML += "<p>Nessun budget trovato.</p>";
-      loadingMessage.style.display = "none";
+    const specialists = await fetchSpecialists();
+    elements.specialistFilter.innerHTML =
+      '<option value="tutti">Tutti</option>';
+
+    specialists.forEach((specialist) => {
+      const option = document.createElement("option");
+      option.value = specialist.cip;
+      option.textContent = `${specialist.nome} ${specialist.cognome}`;
+      elements.specialistFilter.appendChild(option);
+    });
+
+    if (elements.monthFilter) {
+      elements.monthFilter.innerHTML = '<option value="tutti">Tutti</option>';
+      MONTHS.forEach((month, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = month;
+        elements.monthFilter.appendChild(option);
+      });
+    }
+
+    // Update the quarter filter options to show 4-month periods
+    if (elements.quarterFilter) {
+      elements.quarterFilter.innerHTML = '<option value="tutti">Tutti</option>';
+      Object.keys(QUARTERS).forEach((quarter) => {
+        const option = document.createElement("option");
+        option.value = quarter;
+        option.textContent = quarter.charAt(0).toUpperCase() + quarter.slice(1);
+        elements.quarterFilter.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error("Errore inizializzazione filtri:", error);
+    showNotification("Errore nel caricamento dei filtri", "error");
+  }
+}
+
+async function renderBudgetProgress() {
+  if (!elements.budgetContainer) return;
+
+  showLoadingState(elements.budgetContainer);
+  elements.budgetContainer.innerHTML = "<h2>BUDGET</h2>";
+
+  try {
+    const budgets = await fetchBudgets();
+    if (budgets.length === 0) {
+      showEmptyState(elements.budgetContainer, "Nessun budget trovato");
       return;
     }
-    for (const docSnap of budgetSnapshot.docs) {
-      const budgetData = docSnap.data();
-      const specialistaCIP = budgetData.cip;
-      // Filtro per specialista: se il filtro è impostato e il CIP non corrisponde, salto questo documento
+
+    const currentFilters = {
+      specialist: elements.specialistFilter.value,
+      quarter: elements.quarterFilter.value,
+      month: elements.monthFilter?.value || "tutti",
+    };
+
+    for (const budget of budgets) {
       if (
-        filtroSpecialista &&
-        filtroSpecialista.value !== "tutti" &&
-        specialistaCIP !== filtroSpecialista.value
+        currentFilters.specialist !== "tutti" &&
+        budget.cip !== currentFilters.specialist
       ) {
         continue;
       }
-      console.log(
-        `Recuperato budget per specialista CIP: ${specialistaCIP}`,
-        budgetData
+
+      const specialist = (await fetchSpecialists()).find(
+        (s) => s.cip === budget.cip
       );
-      // Recupera lo specialista tramite CIP
-      const specialistaQuery = query(
-        collection(db, "specialisti"),
-        where("cip", "==", specialistaCIP)
+      if (!specialist) continue;
+
+      const policies = await fetchPolicies(budget.cip, currentFilters);
+      const specialistDiv = createSpecialistBudgetDiv(
+        specialist,
+        budget,
+        policies
       );
-      const specialistaDocs = await getDocs(specialistaQuery);
-      const specialista = specialistaDocs.docs[0]
-        ? specialistaDocs.docs[0].data()
-        : null;
-      if (!specialista) {
-        console.log(`Specialista con CIP ${specialistaCIP} non trovato.`);
-        continue;
-      }
-      const specialistaNome = specialista.nome || "Nome non disponibile";
-      const specialistaCognome =
-        specialista.cognome || "Cognome non disponibile";
-      const specialistaCIPNumero = Number.parseInt(specialistaCIP, 10);
-      console.log(`Recupero polizze per CIP (numero): ${specialistaCIPNumero}`);
-      const polizzeQuery = query(
-        collection(db, "polizze"),
-        where("specialista", "==", specialistaCIPNumero)
-      );
-      let polizzeSnapshot = await getDocs(polizzeQuery);
-      // Se è impostato il filtro trimestre, filtriamo le polizze
-      if (filtroTrimestre && filtroTrimestre.value !== "tutti") {
-        polizzeSnapshot = {
-          docs: polizzeSnapshot.docs.filter((doc) =>
-            isPolizzaInTrimestre(doc, filtroTrimestre.value)
-          ),
-        };
-      }
-      if (polizzeSnapshot.docs.length === 0) {
-        console.log(
-          `Nessuna polizza (filtrata) trovata per specialista CIP: ${specialistaCIP}`
-        );
-      } else {
-        console.log(
-          `Polizze (filtrate) per CIP ${specialistaCIP}:`,
-          polizzeSnapshot.docs.map((doc) => doc.data())
-        );
-      }
-      // Crea la tabella per questo specialista
-      const specialistaDiv = document.createElement("div");
-      specialistaDiv.classList.add("specialista-budget");
-      specialistaDiv.innerHTML = `
-        <h3>Specialista: ${specialistaNome} ${specialistaCognome} (CIP: ${specialistaCIP})</h3>
-        <table class="budget-table">
-          <thead>
-            <tr>
-              <th>Comparto</th>
-              <th>Budget</th>
-              <th>Totale</th>
-              <th>% Mese (Importo)</th>
-              <th>% Trimestre (Importo)</th>
-              <th>% Anno (Importo)</th>
-            </tr>
-          </thead>
-          <tbody id="comparti-${specialistaCIP}"></tbody>
-        </table>
-      `;
-      const compartiTbody = specialistaDiv.querySelector(
-        `#comparti-${specialistaCIP}`
-      );
-      for (const item of budgetData.budget) {
-        const comparto = normalizeComparto(item["COMPARTO PRODUTTIVO"]);
-        const budgetComparto = item.importo;
-        console.log(`Comparto: ${comparto}, Budget: ${budgetComparto}`);
-        const polizzeFiltrate = polizzeSnapshot.docs.filter((doc) => {
-          const docComparto = normalizeComparto(
-            doc.data()["COMPARTO PRODUTTIVO"]
-          );
-          return docComparto === comparto;
-        });
-        console.log(
-          `Polizze per ${comparto}:`,
-          polizzeFiltrate.map((doc) => doc.data())
-        );
-        const importoPolizze = polizzeFiltrate.reduce((sum, doc) => {
-          return sum + Number.parseFloat(doc.data().importo || 0);
-        }, 0);
-        console.log(`Somma polizze per ${comparto}: ${importoPolizze}`);
-        const avanzamento = calcolaAvanzamento(importoPolizze, budgetComparto);
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${comparto}</td>
-          <td>${formattaImporto(budgetComparto)}</td>
-          <td>${formattaImporto(importoPolizze)}</td>
-          <td>${avanzamento.mensile}</td>
-          <td>${avanzamento.trimestrale}</td>
-          <td>${avanzamento.annuale}</td>
-        `;
-        compartiTbody.appendChild(row);
-      }
-      specialistaRowContainer.appendChild(specialistaDiv);
-      count++;
-      if (count % 3 === 0) {
-        budgetContainer.appendChild(specialistaRowContainer);
-        specialistaRowContainer = document.createElement("div");
-        specialistaRowContainer.classList.add("specialista-row-container");
-      }
+      elements.budgetContainer.appendChild(specialistDiv);
     }
-    if (count % 3 !== 0) {
-      budgetContainer.appendChild(specialistaRowContainer);
-    }
-    loadingMessage.style.display = "none";
   } catch (error) {
     console.error("Errore nel caricamento dei budget:", error);
-    budgetContainer.innerHTML =
-      "<p>Errore nel caricamento dei budget. Riprova più tardi.</p>";
-    loadingMessage.style.display = "none";
+    showErrorState(elements.budgetContainer, error);
   }
 }
 
-/* ==============================
-   Sezione Campagne
-============================== */
+function createSpecialistBudgetDiv(specialist, budget, policies) {
+  const div = document.createElement("div");
+  div.classList.add("specialista-budget");
 
-// Elementi del DOM per la sezione Campagne
-const campagnaContainer = document.getElementById(
-  "riepilogo-campagna-container"
-);
-const loadingCampagnaMessage = document.getElementById(
-  "loading-campagna-message"
-);
+  const nomeCompleto = `${specialist.nome} ${specialist.cognome}`;
+  const html = `
+    <h3>Specialista: ${nomeCompleto} (CIP: ${budget.cip}) - ${budget.ruolo}</h3>
+    <div class="table-responsive">
+      <table class="budget-table">
+        <thead>
+          <tr>
+            <th>Comparto</th>
+            <th>Budget</th>
+            <th>Totale</th>
+            <th>% Mese</th>
+            <th>% Quadrimestre</th>
+            <th>% Anno</th>
+          </tr>
+        </thead>
+        <tbody id="comparti-${budget.cip}"></tbody>
+      </table>
+    </div>
+  `;
 
-async function visualizzaCampagnaConAvanzamento() {
-  if (!campagnaContainer) {
-    console.error("Elemento 'riepilogo-campagna-container' non trovato.");
-    return;
-  }
-  loadingCampagnaMessage.style.display = "block";
-  // Aggiungiamo il titolo "CAMPAGNE"
-  campagnaContainer.innerHTML = "<h2>CAMPAGNE</h2>";
-  let specialistaRowContainer = document.createElement("div");
-  specialistaRowContainer.classList.add("specialista-row-container");
-  let count = 0;
+  div.innerHTML = html;
+  const tbody = div.querySelector(`#comparti-${budget.cip}`);
+
+  budget.budget.forEach((item) => {
+    const sector = normalizeComparto(item["COMPARTO PRODUTTIVO"]);
+    const sectorBudget = item.importo;
+
+    const sectorPolicies = policies.filter(
+      (policy) =>
+        normalizeComparto(policy["COMPARTO PRODUTTIVO"] || "") === sector
+    );
+
+    const totalAmount = sectorPolicies.reduce(
+      (sum, policy) => sum + Number.parseFloat(policy.importo || 0),
+      0
+    );
+
+    const progress = calcolaAvanzamento(totalAmount, sectorBudget);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${sector}</td>
+      <td>${formattaImporto(sectorBudget)}</td>
+      <td>${formattaImporto(totalAmount)}</td>
+      <td>${progress.mensile}</td>
+      <td>${progress.trimestrale}</td>
+      <td>${progress.annuale}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  return div;
+}
+
+async function renderCampaignProgress() {
+  if (!elements.campaignContainer) return;
+
+  showLoadingState(elements.campaignContainer);
+  elements.campaignContainer.innerHTML = "<h2>CAMPAGNE</h2>";
+
   try {
-    const campagnaSnapshot = await getDocs(collection(db, "campagna"));
-    if (campagnaSnapshot.empty) {
-      campagnaContainer.innerHTML += "<p>Nessuna campagna trovata.</p>";
-      loadingCampagnaMessage.style.display = "none";
+    const campaigns = await fetchCampaigns();
+    if (campaigns.length === 0) {
+      showEmptyState(elements.campaignContainer, "Nessuna campagna trovata");
       return;
     }
-    for (const docSnap of campagnaSnapshot.docs) {
-      const campagnaData = docSnap.data();
-      const specialistaCIP = campagnaData.cip;
-      console.log(
-        `Recuperata campagna per specialista CIP: ${specialistaCIP}`,
-        campagnaData
-      );
-      // Filtro per specialista
+
+    const currentFilters = {
+      specialist: elements.specialistFilter.value,
+      quarter: elements.quarterFilter.value,
+      month: elements.monthFilter?.value || "tutti",
+    };
+
+    for (const campaign of campaigns) {
       if (
-        filtroSpecialista &&
-        filtroSpecialista.value !== "tutti" &&
-        specialistaCIP !== filtroSpecialista.value
+        currentFilters.specialist !== "tutti" &&
+        campaign.cip !== currentFilters.specialist
       ) {
         continue;
       }
-      const specialistaQuery = query(
-        collection(db, "specialisti"),
-        where("cip", "==", specialistaCIP)
+
+      const specialist = (await fetchSpecialists()).find(
+        (s) => s.cip === campaign.cip
       );
-      const specialistaDocs = await getDocs(specialistaQuery);
-      const specialista = specialistaDocs.docs[0]
-        ? specialistaDocs.docs[0].data()
-        : null;
-      if (!specialista) {
-        console.log(`Specialista con CIP ${specialistaCIP} non trovato.`);
-        continue;
-      }
-      const specialistaNome = specialista.nome || "Nome non disponibile";
-      const specialistaCognome =
-        specialista.cognome || "Cognome non disponibile";
-      const specialistaCIPNumero = Number.parseInt(specialistaCIP, 10);
-      console.log(`Recupero polizze per CIP (numero): ${specialistaCIPNumero}`);
-      const polizzeQuery = query(
-        collection(db, "polizze"),
-        where("specialista", "==", specialistaCIPNumero)
+      if (!specialist) continue;
+
+      const policies = await fetchPolicies(campaign.cip, currentFilters);
+      const specialistDiv = createSpecialistCampaignDiv(
+        specialist,
+        campaign,
+        policies
       );
-      let polizzeSnapshot = await getDocs(polizzeQuery);
-      if (filtroTrimestre && filtroTrimestre.value !== "tutti") {
-        polizzeSnapshot = {
-          docs: polizzeSnapshot.docs.filter((doc) =>
-            isPolizzaInTrimestre(doc, filtroTrimestre.value)
-          ),
-        };
-      }
-      if (polizzeSnapshot.docs.length === 0) {
-        console.log(
-          `Nessuna polizza (filtrata) trovata per specialista CIP: ${specialistaCIP}`
-        );
-      } else {
-        console.log(
-          `Polizze (filtrate) per CIP ${specialistaCIP}:`,
-          polizzeSnapshot.docs.map((doc) => doc.data())
-        );
-      }
-      // Crea la tabella per questo specialista (Campagna)
-      const specialistaDiv = document.createElement("div");
-      specialistaDiv.classList.add("specialista-budget");
-      specialistaDiv.innerHTML = `
-        <h3>Specialista: ${specialistaNome} ${specialistaCognome} (CIP: ${specialistaCIP})</h3>
-        <table class="budget-table">
-          <thead>
-            <tr>
-              <th>Comparto</th>
-              <th>Budget</th>
-              <th>Totale</th>
-              <th>% Mese (Importo)</th>
-              <th>% Trimestre (Importo)</th>
-              <th>% Anno (Importo)</th>
-            </tr>
-          </thead>
-          <tbody id="campagna-comparti-${specialistaCIP}"></tbody>
-        </table>
-      `;
-      const compartiTbody = specialistaDiv.querySelector(
-        `#campagna-comparti-${specialistaCIP}`
-      );
-      for (const item of campagnaData.budget) {
-        const comparto = normalizeComparto(item["COMPARTO PRODUTTIVO"]);
-        const budgetComparto = item.importo;
-        console.log(
-          `Campagna - Comparto: ${comparto}, Budget: ${budgetComparto}`
-        );
-        const polizzeFiltrate = polizzeSnapshot.docs.filter((doc) => {
-          const docComparto = normalizeComparto(
-            doc.data()["COMPARTO PRODUTTIVO"]
-          );
-          return docComparto === comparto;
-        });
-        console.log(
-          `Campagna - Polizze per ${comparto}:`,
-          polizzeFiltrate.map((doc) => doc.data())
-        );
-        const importoPolizze = polizzeFiltrate.reduce((sum, doc) => {
-          return sum + Number.parseFloat(doc.data().importo || 0);
-        }, 0);
-        console.log(
-          `Campagna - Somma polizze per ${comparto}: ${importoPolizze}`
-        );
-        const avanzamento = calcolaAvanzamento(importoPolizze, budgetComparto);
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${comparto}</td>
-          <td>${formattaImporto(budgetComparto)}</td>
-          <td>${formattaImporto(importoPolizze)}</td>
-          <td>${avanzamento.mensile}</td>
-          <td>${avanzamento.trimestrale}</td>
-          <td>${avanzamento.annuale}</td>
-        `;
-        compartiTbody.appendChild(row);
-      }
-      specialistaRowContainer.appendChild(specialistaDiv);
-      count++;
-      if (count % 3 === 0) {
-        campagnaContainer.appendChild(specialistaRowContainer);
-        specialistaRowContainer = document.createElement("div");
-        specialistaRowContainer.classList.add("specialista-row-container");
-      }
+      elements.campaignContainer.appendChild(specialistDiv);
     }
-    if (count % 3 !== 0) {
-      campagnaContainer.appendChild(specialistaRowContainer);
-    }
-    loadingCampagnaMessage.style.display = "none";
   } catch (error) {
     console.error("Errore nel caricamento delle campagne:", error);
-    campagnaContainer.innerHTML =
-      "<p>Errore nel caricamento delle campagne. Riprova più tardi.</p>";
-    loadingCampagnaMessage.style.display = "none";
+    showErrorState(elements.campaignContainer, error);
   }
 }
 
-/* ==============================
-   Inizializzazione e Gestione Filtri
-============================== */
-function applicaFiltri() {
-  // Quando i filtri cambiano, aggiorniamo sia Budget che Campagne
-  visualizzaBudgetConAvanzamento();
-  visualizzaCampagnaConAvanzamento();
+function createSpecialistCampaignDiv(specialist, campaign, policies) {
+  const div = document.createElement("div");
+  div.classList.add("specialista-budget");
+
+  const nomeCompleto = `${specialist.nome} ${specialist.cognome}`;
+  const html = `
+    <h3>Specialista: ${nomeCompleto} (CIP: ${campaign.cip}) - ${campaign.ruolo}</h3>
+    <div class="table-responsive">
+      <table class="budget-table">
+        <thead>
+          <tr>
+            <th>Comparto</th>
+            <th>Budget</th>
+            <th>Totale</th>
+            <th>% Mese</th>
+            <th>% Quadrimestre</th>
+            <th>% Anno</th>
+          </tr>
+        </thead>
+        <tbody id="campagna-comparti-${campaign.cip}"></tbody>
+      </table>
+    </div>
+  `;
+
+  div.innerHTML = html;
+  const tbody = div.querySelector(`#campagna-comparti-${campaign.cip}`);
+
+  campaign.budget.forEach((item) => {
+    const sector = normalizeComparto(item["COMPARTO PRODUTTIVO"]);
+    const sectorBudget = item.importo;
+
+    const sectorPolicies = policies.filter(
+      (policy) =>
+        normalizeComparto(policy["COMPARTO PRODUTTIVO"] || "") === sector
+    );
+
+    const totalAmount = sectorPolicies.reduce(
+      (sum, policy) => sum + Number.parseFloat(policy.importo || 0),
+      0
+    );
+
+    const progress = calcolaAvanzamento(totalAmount, sectorBudget);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${sector}</td>
+      <td>${formattaImporto(sectorBudget)}</td>
+      <td>${formattaImporto(totalAmount)}</td>
+      <td>${progress.mensile}</td>
+      <td>${progress.trimestrale}</td>
+      <td>${progress.annuale}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  return div;
 }
 
-// Ascoltatori per i filtri
-if (filtroSpecialista) {
-  filtroSpecialista.addEventListener("change", applicaFiltri);
-}
-if (filtroTrimestre) {
-  filtroTrimestre.addEventListener("change", applicaFiltri);
+function initEventListeners() {
+  if (elements.specialistFilter) {
+    elements.specialistFilter.addEventListener("change", () => {
+      renderBudgetProgress();
+      renderCampaignProgress();
+    });
+  }
+
+  if (elements.quarterFilter) {
+    elements.quarterFilter.addEventListener("change", () => {
+      renderBudgetProgress();
+      renderCampaignProgress();
+    });
+  }
+
+  if (elements.monthFilter) {
+    elements.monthFilter.addEventListener("change", renderBudgetProgress);
+  }
 }
 
-// Avvia il caricamento quando il DOM è pronto
-document.addEventListener("DOMContentLoaded", () => {
-  visualizzaBudgetConAvanzamento();
-  visualizzaCampagnaConAvanzamento();
-});
+async function initialize() {
+  await initFilters();
+  initEventListeners();
+  renderBudgetProgress();
+  renderCampaignProgress();
+}
+
+document.addEventListener("DOMContentLoaded", initialize);
